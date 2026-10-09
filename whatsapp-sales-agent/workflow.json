@@ -1,0 +1,555 @@
+{
+  "name": "WhatsApp + OpenAI + Tilopay + Shopify - Atención y venta automatizada",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.query[\"hub.challenge\"]}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9b434861-237c-465c-a1e9-2a33a2914cd8",
+      "name": "¿Es verificación de Meta?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1312,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{$json.query[\"hub.challenge\"]}}",
+        "options": {}
+      },
+      "id": "0e7c09af-c6ea-4c11-9b7e-2fa0149616a7",
+      "name": "Responder challenge de Meta",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1568,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const entry = $json.body.entry?.[0]?.changes?.[0]?.value;\nconst msg = entry?.messages?.[0];\nif (!msg) { return []; }\nreturn [{\n  json: {\n    telefono: msg.from,\n    nombre: entry.contacts?.[0]?.profile?.name || \"\",\n    tipo: msg.type,\n    texto: msg.text?.body || \"\",\n    message_id: msg.id\n  }\n}];"
+      },
+      "id": "bdf80eca-1ff1-4d5b-a636-d18410949d80",
+      "name": "Extraer datos del mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.tipo}}",
+              "rightValue": "text",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d8a16ee2-f788-43e7-ab25-a48e95fd0818",
+      "name": "¿Es mensaje de texto?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1824,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{$json.texto}}",
+        "options": {
+          "systemMessage": "Eres el asistente de ventas por WhatsApp de la tienda. Hablas en español, tono cercano y profesional.\n1. Entiende qué producto quiere comprar el cliente.\n2. Usa la herramienta \"Buscar producto en Shopify\" para confirmar disponibilidad y precio antes de responder.\n3. Responde preguntas frecuentes (envíos, tiempos, métodos de pago, garantía) con la información de la tienda.\n4. Solo cuando el cliente confirme que quiere comprar, usa la herramienta \"Generar link de pago Tilopay\" indicando el monto y una descripción con el producto.\n5. Entrega el link de pago generado y explica que el pedido se confirmará automáticamente al recibir el pago.\nNunca inventes precios ni links: siempre usa las herramientas."
+        }
+      },
+      "id": "0ae81bc4-cb4d-4aae-97f6-306719a934b0",
+      "name": "Asistente de ventas (AI Agent)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        2112,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "id": "7c923d3c-cff1-40a1-ade4-f4ac147ce510",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        1872,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{$('Extraer datos del mensaje').item.json.telefono}}",
+        "contextWindowLength": 15
+      },
+      "id": "e8ca4193-c3c0-4198-96d3-fab94c785716",
+      "name": "Memoria por cliente (teléfono)",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        2096,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Busca un producto en la tienda Shopify por nombre y devuelve precio y disponibilidad.",
+        "url": "=https://TU_TIENDA.myshopify.com/admin/api/2024-01/products.json?title={query}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "query",
+              "description": "Nombre o palabra clave del producto",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "7e752b0c-29e6-4d99-9559-c848752671f3",
+      "name": "Tool: Buscar producto en Shopify",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        2288,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Genera un link de pago en Tilopay para un monto y descripción dados y lo devuelve al agente.",
+        "method": "POST",
+        "url": "https://app.tilopay.com/api/v1/payment-links",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"amount\": {amount}, \"currency\": \"CRC\", \"description\": \"{descripcion}\"}",
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "amount",
+              "description": "Monto total a cobrar",
+              "type": "number"
+            },
+            {
+              "name": "descripcion",
+              "description": "Descripción del producto/pedido",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "64fa812b-d51b-489b-807c-28afe6ae465b",
+      "name": "Tool: Generar link de pago Tilopay",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        2528,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    telefono: $('Extraer datos del mensaje').item.json.telefono,\n    respuesta: $json.output\n  }\n}];"
+      },
+      "id": "09115215-fd26-4577-9603-9948574688cd",
+      "name": "Formatear respuesta WhatsApp",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2368,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v20.0/TU_PHONE_NUMBER_ID/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"messaging_product\":\"whatsapp\",\"to\":\"{{$json.telefono}}\",\"type\":\"text\",\"text\":{\"body\":\"{{$json.respuesta}}\"}}",
+        "options": {}
+      },
+      "id": "a5e555d3-51cb-441f-bea2-c82850b061ad",
+      "name": "Enviar respuesta por WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2624,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tilopay-payment-webhook",
+        "options": {}
+      },
+      "id": "af7af009-4af0-4d30-bc91-67b7d46b7ce0",
+      "name": "Webhook: Confirmación de pago Tilopay",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        832,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.body.status}}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "76b5ac1d-f488-4418-a996-9f1882c94c63",
+      "name": "¿Pago aprobado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1088,
+        848
+      ]
+    },
+    {
+      "parameters": {
+        "additionalFields": {}
+      },
+      "id": "668b83a6-ce22-4456-9527-6ff595befe4f",
+      "name": "Crear orden y actualizar inventario en Shopify",
+      "type": "n8n-nodes-base.shopify",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v20.0/TU_PHONE_NUMBER_ID/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"messaging_product\":\"whatsapp\",\"to\":\"{{$json.body.metadata.telefono}}\",\"type\":\"text\",\"text\":{\"body\":\"¡Gracias por tu compra! Tu pago fue confirmado y tu pedido va en camino.\"}}",
+        "options": {}
+      },
+      "id": "ba679124-74e0-4549-bb98-2049e9472361",
+      "name": "Confirmar compra por WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "mode": "name",
+          "value": "ventas"
+        },
+        "text": "=Nueva venta confirmada ✔️ Tel: {{$json.body.metadata.telefono}} — Monto: {{$json.body.amount}}",
+        "otherOptions": {}
+      },
+      "id": "e1c85cc2-a581-4b99-b72a-9e65512c1623",
+      "name": "Notificar venta al equipo interno",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1872,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v20.0/TU_PHONE_NUMBER_ID/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"messaging_product\":\"whatsapp\",\"to\":\"{{$json.body.metadata.telefono}}\",\"type\":\"text\",\"text\":{\"body\":\"Tu pago no se pudo confirmar. ¿Quieres intentar de nuevo?\"}}",
+        "options": {}
+      },
+      "id": "582fac40-d4a0-44c5-bd49-5f778e7ca701",
+      "name": "Avisar pago no completado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2) Confirmación de pago y cumplimiento\nTilopay llama a este webhook cuando el pago se aprueba. Si está aprobado, se crea la orden pagada en Shopify (esto descuenta el inventario), se confirma la compra por WhatsApp y se avisa al equipo interno.",
+        "height": 200,
+        "width": 900
+      },
+      "id": "53b0f827-6488-4373-b127-51c3a83e2c27",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        144,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        1056,
+        176
+      ],
+      "id": "0f477de3-e415-4399-b31f-14f0b19b4fa0",
+      "name": "WhatsApp Trigger"
+    }
+  ],
+  "connections": {
+    "¿Es verificación de Meta?": {
+      "main": [
+        [
+          {
+            "node": "Responder challenge de Meta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extraer datos del mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer datos del mensaje": {
+      "main": [
+        [
+          {
+            "node": "¿Es mensaje de texto?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es mensaje de texto?": {
+      "main": [
+        [
+          {
+            "node": "Asistente de ventas (AI Agent)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Asistente de ventas (AI Agent)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memoria por cliente (teléfono)": {
+      "ai_memory": [
+        [
+          {
+            "node": "Asistente de ventas (AI Agent)",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Buscar producto en Shopify": {
+      "ai_tool": [
+        [
+          {
+            "node": "Asistente de ventas (AI Agent)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Generar link de pago Tilopay": {
+      "ai_tool": [
+        [
+          {
+            "node": "Asistente de ventas (AI Agent)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Asistente de ventas (AI Agent)": {
+      "main": [
+        [
+          {
+            "node": "Formatear respuesta WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear respuesta WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Enviar respuesta por WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Confirmación de pago Tilopay": {
+      "main": [
+        [
+          {
+            "node": "¿Pago aprobado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Pago aprobado?": {
+      "main": [
+        [
+          {
+            "node": "Crear orden y actualizar inventario en Shopify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Avisar pago no completado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear orden y actualizar inventario en Shopify": {
+      "main": [
+        [
+          {
+            "node": "Confirmar compra por WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar compra por WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Notificar venta al equipo interno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {}
+}

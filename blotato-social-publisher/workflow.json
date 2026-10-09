@@ -1,0 +1,814 @@
+{
+  "name": "Blotato WF",
+  "nodes": [
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=You are an expert social media copywriter.\nWrite a high-performing caption for the topic: \"{{ $json.Topic }}\". The video features ultra-realistic, AI-generated ASMR content where glass objects are being sliced with a knife. \nMake it scroll-stopping, short, and engaging.\n\nGenerate a short, non-generic caption for each platform. Captions must follow exact max-lengths and these best practices:\n\n• LinkedIn Shorts (max 3000 chars)\nStart with value (tip/stat)\nUse short lines or bullets\nEnd with a clear CTA\n\n• Facebook Reels (max 2200 chars)\nFirst 125 chars must punch\nUse line breaks or emojis\nInclude CTA within first 125\n2-3 relevant hashtags\n\n• TikTok (max 4000 chars)\nLead with CTA or question\n3-5 trending hashtags\nSprinkle emojis for tone\n\n• Instagram Reels (max 2200 chars)\nFirst 125 chars show before \"more\"\nUse emojis/line breaks\nUp to 5 hashtags at end\n\n• YouTube Shorts\n100 chars max for the caption\nInclude 2-3 hashtags (#Shorts, topic)\nOutput only valid JSON.\n\nExample JSON output:\n\n{\n  \"LinkedIn Shorts\": \"_\",\n  \"Facebook Reels\": \"_\",\n  \"TikTok\": \"_\",\n  \"Instagram Reels\": \"_\",\n  \"YouTube Shorts\": \"_\"\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        192,
+        176
+      ],
+      "id": "ff12dfa5-f44f-4605-bc45-1cd0675aa818",
+      "name": "Caption Agent",
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "YOUR_OPENAIAPI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://backend.blotato.com/v2/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "blotato-api-key",
+              "value": "YOUR_BLOTATO_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "=https://drive.google.com/uc?export=download&id={{ $('Upload video to Drive').item.json.id }}"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        544,
+        240
+      ],
+      "id": "129286f3-91e1-4749-8327-92e1f14a1ea3",
+      "name": "Upload Video to Blotato"
+    },
+    {
+      "parameters": {
+        "accountId": {
+          "__rl": true,
+          "value": "YOUR_ACCOUNT_ID",
+          "mode": "list",
+          "cachedResultName": "your_account",
+          "cachedResultUrl": "https://backend.blotato.com/v2/accounts/YOUR_ACCOUNT_ID"
+        },
+        "postContentText": "={{ $('Content Upload Form').item.json['Descripción'] === 'AI' ? JSON.parse($('Caption Agent').item.json.output[0].content[0].text)['Instagram Reels'] : $('Content Upload Form').item.json['Descripción'] }}",
+        "postContentMediaUrls": "={{ $json.url }}",
+        "options": {
+          "instagramCoverImageUrl": "={{ $if($('Upload cover to Drive').isExecuted, 'https://drive.google.com/uc?export=download&id=' + $('Upload cover to Drive').item.json.id, '') }}",
+          "instagramMediaType": "={{ $('Content Upload Form').item.json[\"Media Type\"] }}"
+        }
+      },
+      "type": "@blotato/n8n-nodes-blotato.blotato",
+      "typeVersion": 2,
+      "position": [
+        992,
+        48
+      ],
+      "id": "517ede3e-255e-4d60-93ec-bbbbcbaf0992",
+      "name": "Post to Instagram",
+      "credentials": {
+        "blotatoApi": {
+          "id": "",
+          "name": "YOUR_BLOTATOAPI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "platform": "tiktok",
+        "accountId": {
+          "__rl": true,
+          "value": "YOUR_ACCOUNT_ID",
+          "mode": "list",
+          "cachedResultName": "your_account",
+          "cachedResultUrl": "https://backend.blotato.com/v2/accounts/YOUR_ACCOUNT_ID"
+        },
+        "postContentText": "={{ $('Content Upload Form').item.json['Descripción'] === 'AI' ? JSON.parse($('Caption Agent').item.json.output[0].content[0].text)['TikTok'] : $('Content Upload Form').item.json['Descripción'] }}",
+        "postContentMediaUrls": "={{ $json.url }}",
+        "options": {}
+      },
+      "type": "@blotato/n8n-nodes-blotato.blotato",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -144
+      ],
+      "id": "6801be4d-be8a-4a7b-adaf-5bf352893f75",
+      "name": "Post to TikTok",
+      "credentials": {
+        "blotatoApi": {
+          "id": "",
+          "name": "YOUR_BLOTATOAPI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "numberInputs": 5
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1216,
+        192
+      ],
+      "id": "972a1484-8c6a-4535-8e68-81022b378920",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "platform": "youtube",
+        "accountId": {
+          "__rl": true,
+          "value": "YOUR_ACCOUNT_ID",
+          "mode": "list",
+          "cachedResultName": "your_account",
+          "cachedResultUrl": "https://backend.blotato.com/v2/accounts/YOUR_ACCOUNT_ID"
+        },
+        "postContentText": "=",
+        "postContentMediaUrls": "={{ $json.url }}",
+        "postCreateYoutubeOptionTitle": "={{ $('Content Upload Form').item.json['Descripción'] === 'AI' ? JSON.parse($('Caption Agent').item.json.output[0].content[0].text)['YouTube Shorts'] : $('Content Upload Form').item.json['Descripción'] }}",
+        "postCreateYoutubeOptionShouldNotifySubscribers": false,
+        "options": {}
+      },
+      "type": "@blotato/n8n-nodes-blotato.blotato",
+      "typeVersion": 2,
+      "position": [
+        992,
+        240
+      ],
+      "id": "e4d817a7-4ed9-466f-ba34-568c160f0ed6",
+      "name": "Post to Youtube",
+      "credentials": {
+        "blotatoApi": {
+          "id": "",
+          "name": "YOUR_BLOTATOAPI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "platform": "facebook",
+        "accountId": {
+          "__rl": true,
+          "value": "YOUR_ACCOUNT_ID",
+          "mode": "list",
+          "cachedResultName": "your_account",
+          "cachedResultUrl": "https://backend.blotato.com/v2/accounts/YOUR_ACCOUNT_ID"
+        },
+        "postContentText": "={{ $('Caption Agent').item.json.output[0].content[0].text['Facebook Reels'] }}",
+        "postContentMediaUrls": "={{ $json.url }}",
+        "facebookPageId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "options": {}
+      },
+      "type": "@blotato/n8n-nodes-blotato.blotato",
+      "typeVersion": 2,
+      "position": [
+        992,
+        432
+      ],
+      "id": "59e6374a-33cb-486e-9b2f-eafaeb65de85",
+      "name": "Post to Facebook",
+      "credentials": {
+        "blotatoApi": {
+          "id": "",
+          "name": "YOUR_BLOTATOAPI"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "platform": "linkedin",
+        "accountId": {
+          "__rl": true,
+          "value": "YOUR_ACCOUNT_ID",
+          "mode": "list",
+          "cachedResultName": "your_account",
+          "cachedResultUrl": "https://backend.blotato.com/v2/accounts/YOUR_ACCOUNT_ID"
+        },
+        "postContentText": "={{ $('Caption Agent').item.json.output[0].content[0].text['LinkedIn Shorts'] }}",
+        "postContentMediaUrls": "={{ $('Get Content').item.json.video }}",
+        "options": {}
+      },
+      "type": "@blotato/n8n-nodes-blotato.blotato",
+      "typeVersion": 2,
+      "position": [
+        992,
+        624
+      ],
+      "id": "43e8ff3a-0855-4b14-84f3-4847377ae7ee",
+      "name": "Post to LinkedIn",
+      "credentials": {
+        "blotatoApi": {
+          "id": "",
+          "name": "YOUR_BLOTATOAPI"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fbf3a419-ccbe-4c32-8c33-b9c5510d6069",
+              "leftValue": "={{ $('Content Upload Form').item.json['Descripción'] }}",
+              "rightValue": "AI",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -32,
+        240
+      ],
+      "id": "8f6158c9-b775-4c24-8b48-f027b2069be9",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "path": "content-upload-form",
+        "formTitle": "Upload New Content",
+        "formDescription": " Fill out this form to upload a content for posting.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Title",
+              "placeholder": "Main Topic",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Descripción",
+              "fieldType": "textarea",
+              "placeholder": "No description, AI will generate one",
+              "defaultValue": "AI"
+            },
+            {
+              "fieldLabel": "Media Type",
+              "fieldType": "dropdown",
+              "defaultValue": "Reel",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Reel"
+                  },
+                  {
+                    "option": "Story"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Video",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".mp4,.mov",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Cover Image",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".jpg,.jpeg,.png"
+            },
+            {
+              "fieldLabel": "Platforms",
+              "fieldType": "checkbox",
+              "defaultValue": "Instagram",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Instagram"
+                  },
+                  {
+                    "option": "TikTok"
+                  },
+                  {
+                    "option": "Facebook"
+                  },
+                  {
+                    "option": "YouTube"
+                  },
+                  {
+                    "option": "LinkedIn"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Done! Your video was uploaded on the selected platforms."
+            }
+          }
+        }
+      },
+      "id": "3b3f7435-2d6a-41f4-9bcc-dd2087c9855e",
+      "name": "Content Upload Form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2,
+      "position": [
+        -1152,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "Video",
+        "name": "={{ $json.Video[0].filename }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1Hdg6oKkwzKoNvsiFKIn2w572JsbyTrPt",
+          "mode": "list",
+          "cachedResultName": "Videos",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/YOUR_DRIVE_FOLDER_ID"
+        },
+        "options": {}
+      },
+      "id": "41476012-4e21-46f3-831e-d095d2ee065f",
+      "name": "Upload video to Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -704,
+        96
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "",
+          "name": "YOUR_GOOGLEDRIVEOAUTH2API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "id": "00cfafb1-aae5-44f6-8c67-829d265e497a",
+      "name": "Make video shareable",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -480,
+        96
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "",
+          "name": "YOUR_GOOGLEDRIVEOAUTH2API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "=Cover_Image",
+        "name": "={{ $json[\"Cover Image\"][0].filename }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1kfRmR8-VM3CtTogSv79jturbhbF6Eh7z",
+          "mode": "list",
+          "cachedResultName": "CoverImages",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/YOUR_DRIVE_FOLDER_ID"
+        },
+        "options": {}
+      },
+      "id": "af6ed0ab-8365-47df-b933-a17c9e7cf75f",
+      "name": "Upload cover to Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -704,
+        384
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "",
+          "name": "YOUR_GOOGLEDRIVEOAUTH2API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "id": "04bb7dd5-f78f-4968-9e4d-2bc026adb253",
+      "name": "Make cover shareable",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -480,
+        384
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "",
+          "name": "YOUR_GOOGLEDRIVEOAUTH2API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "output": "empty"
+      },
+      "id": "7d088a77-fd6c-45e7-8275-51c6f4819564",
+      "name": "Merge video + cover links",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -256,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "97622cc4-2a26-40cc-a0a2-1379538e6fc1",
+              "leftValue": "={{ $json[\"Cover Image\"].filename }}",
+              "rightValue": "null",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -928,
+        320
+      ],
+      "id": "16640909-ace3-402c-bfc2-054d79c37992",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b7b2a9f3-849a-470e-a094-7526a55bc101",
+              "leftValue": "={{ $('Content Upload Form').item.json.Platforms.includes('Instagram') }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        768,
+        48
+      ],
+      "id": "8f8b3dc0-7af9-4181-9e27-d72d9179860e",
+      "name": "If2"
+    }
+  ],
+  "connections": {
+    "Caption Agent": {
+      "main": [
+        [
+          {
+            "node": "Upload Video to Blotato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Video to Blotato": {
+      "main": [
+        [
+          {
+            "node": "Post to Facebook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to Youtube",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to TikTok",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to TikTok": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Post to Instagram": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        []
+      ]
+    },
+    "Post to Youtube": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Post to Facebook": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Post to LinkedIn": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Caption Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upload Video to Blotato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content Upload Form": {
+      "main": [
+        [
+          {
+            "node": "Upload video to Drive",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload video to Drive": {
+      "main": [
+        [
+          {
+            "node": "Make video shareable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Make video shareable": {
+      "main": [
+        [
+          {
+            "node": "Merge video + cover links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload cover to Drive": {
+      "main": [
+        [
+          {
+            "node": "Make cover shareable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Make cover shareable": {
+      "main": [
+        [
+          {
+            "node": "Merge video + cover links",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Merge video + cover links",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Upload cover to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge video + cover links": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Post to Instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {}
+}
